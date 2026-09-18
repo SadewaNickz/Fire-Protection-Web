@@ -182,11 +182,24 @@ function reducer(state, action) {
       }
       if (d.node_id === 2) {
         rts.node2 = nowMs;
+        const smokeStatus = d.smoke_status ?? (d.state_smoke !== undefined ? (Number(d.state_smoke) === 1 ? 'DANGER' : 'NORMAL') : (state.node2?.smoke_status ?? 'NORMAL'));
+        const heatStatus = d.heat_status ?? (state.node2?.heat_status ?? 'NORMAL');
         newState.node2 = {
           gas_pressure: d.gas_pressure ?? d.pressure ?? (state.node2?.gas_pressure ?? 0),
           gas_valve_status: d.gas_valve_status ?? d.valve_status ?? (state.node2?.gas_valve_status ?? 'CLOSED'),
-          smoke_status: d.smoke_status ?? (d.state_smoke !== undefined ? (Number(d.state_smoke) === 1 ? 'DANGER' : 'NORMAL') : (state.node2?.smoke_status ?? 'NORMAL')),
+          smoke_status: smokeStatus,
+          heat_status: heatStatus,
+          loop_status: d.loop_status ?? (state.node2?.loop_status ?? 'NORMAL'),
+          voltage_v: d.voltage_v ?? (state.node2?.voltage_v ?? null),
+          current_ma: d.current_ma ?? (state.node2?.current_ma ?? null),
         };
+        // Sinkronkan status detektor bangunan (smoke & heat) dari node2
+        newState.detectors = {
+          ...(state.detectors ?? { flame: 'NORMAL', thermal: 'NORMAL' }),
+          smoke: smokeStatus,
+          heat: heatStatus,
+        };
+        rts.detectors = nowMs;
       }
       if (d.node_id === 3) {
         rts.node3 = nowMs;
@@ -254,7 +267,7 @@ function reducer(state, action) {
             temperature_sht: 28.35, humidity: 54.2, thermal_temp: 27.2, thermal_pixels: Array(64).fill(27.2), co2_ppm: 0.014, uv_value: 0,
           },
           node2: isFresh(rts, 'node2') ? state.node2
-            : { gas_pressure: 5.2, gas_valve_status: 'CLOSED', smoke_status: 'NORMAL' },
+            : { gas_pressure: 5.2, gas_valve_status: 'CLOSED', smoke_status: 'NORMAL', heat_status: 'NORMAL', loop_status: 'NORMAL', voltage_v: 12.05, current_ma: 3.2 },
           node3: isFresh(rts, 'node3') ? state.node3
             : { water_pressure: 4.8, water_valve_status: 'CLOSED' },
           node4: isFresh(rts, 'node4') ? state.node4
@@ -351,6 +364,13 @@ function reducer(state, action) {
           ...state.node2,
           gas_pressure: +(Math.max(0, state.node2.gas_pressure + (Math.random() - 0.5) * 0.1)).toFixed(2),
           smoke_status: state.node2.smoke_status ?? 'NORMAL',
+          heat_status: state.node2.heat_status ?? 'NORMAL',
+          voltage_v: state.node2.voltage_v != null
+            ? +(Math.max(0, state.node2.voltage_v + (Math.random() - 0.5) * 0.05)).toFixed(3)
+            : null,
+          current_ma: state.node2.current_ma != null
+            ? +(Math.max(0, state.node2.current_ma + (Math.random() - 0.5) * 0.1)).toFixed(3)
+            : null,
         };
       }
 

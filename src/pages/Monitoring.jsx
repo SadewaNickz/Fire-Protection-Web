@@ -55,9 +55,10 @@ const READY = {
 };
 
 const detectorPalette = {
-  NORMAL: { label: 'Aktif - Aman', color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  NORMAL: { label: 'Aktif - Standby', color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
   WARNING: { label: 'Aktif - Waspada', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
   DANGER: { label: 'Aktif - Bahaya', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  FAULT: { label: 'Tidak Aktif - Terputus', color: '#64748b', bg: 'rgba(100,116,139,0.12)' },
 };
 
 function formatNumber(value, digits = 1, fallback = '-') {
@@ -401,7 +402,21 @@ function DistributionView({ panelData }) {
 
 function BuildingView({ detectors, node2 }) {
   const smokeStatus = node2?.smoke_status ?? detectors?.smoke ?? 'NORMAL';
-  const heatStatus = detectors?.heat;
+  const heatStatus = node2?.heat_status ?? detectors?.heat ?? 'NORMAL';
+  const loopStatus = node2?.loop_status ?? 'NORMAL';
+  const loopColor = loopStatus === 'ALARM' ? '#ef4444' : loopStatus === 'FAULT' ? '#64748b' : '#10b981';
+
+  const loopCards = [
+    {
+      icon: Activity,
+      title: 'Arus Loop Detektor',
+      value: formatNumber(node2?.current_ma, 3),
+      unit: 'mA',
+      status: 'ready',
+      note: 'Arus loop smoke + heat detector. Naik saat alarm.',
+      color: loopColor,
+    },
+  ];
 
   return (
     <motion.div key="building" variants={tabVariants} initial="initial" animate="animate" exit="exit">
@@ -412,6 +427,14 @@ function BuildingView({ detectors, node2 }) {
       <div className="monitoring-building-grid">
         <DetectorCard icon={Wind} title="Smoke Detector" status={smokeStatus} />
         <DetectorCard icon={Thermometer} title="Heat Detector" status={heatStatus} />
+      </div>
+
+      <div className="monitoring-building-grid">
+        {loopCards.map((item) => (
+          <div key={item.title} style={{ gridColumn: '1 / -1' }}>
+            <StatusCard {...item} />
+          </div>
+        ))}
       </div>
 
       <div className="card monitoring-building-note">
@@ -471,7 +494,7 @@ export default function Monitoring() {
   const dangerStates = useMemo(() => {
     return {
       distribution: panelData?.uv_value === 1 || panelData?.thermal_temp >= 60 || panelData?.temperature_sht >= 60,
-      building: (node2?.smoke_status ?? detectors?.smoke) === 'DANGER' || detectors?.heat === 'DANGER',
+      building: (node2?.smoke_status ?? detectors?.smoke) === 'DANGER' || (node2?.heat_status ?? detectors?.heat) === 'DANGER',
       hydrant: (node3?.water_pressure ?? water_pressure ?? 0) >= PRESSURE_DANGER_PSI,
       smargas: (node2?.gas_pressure ?? 0) >= PRESSURE_DANGER_PSI,
     };
